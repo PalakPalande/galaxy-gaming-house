@@ -1,0 +1,2 @@
+import { Gamepad2,Users } from 'lucide-react'
+export default function GameCard({game}){return <article className="game-card glass-card"><div className="game-cover"><img src={game.cover_url} alt={`${game.name} demo artwork`}/><span className="genre-chip">{game.genre}</span></div><div className="game-card-body"><h3>{game.name}</h3><p>{game.description}</p><div className="game-meta"><span><Users size={15}/>{game.multiplayer?'Multiplayer':'Single player'}</span><span><Gamepad2 size={15}/>{game.station_count||'—'} stations</span></div></div></article>}
