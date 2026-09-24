@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
-import api from '../api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { io } from 'socket.io-client'
+import api, { SOCKET_URL } from '../api'
 
 export default function MyBookings() {
   const [items, setItems] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const refreshTimer = useRef(null)
 
   const load = useCallback(async ({ signal, quiet = false } = {}) => {
     if (!quiet) setLoading(true)
@@ -31,7 +33,19 @@ export default function MyBookings() {
     const controller = new AbortController()
     load({ signal: controller.signal })
 
-    return () => controller.abort()
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] })
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer.current)
+      refreshTimer.current = setTimeout(() => load({ quiet: true }), 120)
+    }
+
+    ;['booking:created','booking:cancelled','booking:updated','payment:updated','session:started','session:ended'].forEach(event => socket.on(event, scheduleRefresh))
+
+    return () => {
+      controller.abort()
+      clearTimeout(refreshTimer.current)
+      socket.disconnect()
+    }
   }, [load])
 
   async function cancel(id) {
@@ -49,7 +63,7 @@ export default function MyBookings() {
       <div className="page-head">
         <span className="eyebrow">PLAYER HISTORY</span>
         <h1>My bookings</h1>
-        <p>Confirmed, completed and cancelled bookings appear here. Unpaid online checkout attempts are not treated as bookings.</p>
+        <p>Confirmed, completed and cancelled bookings update automatically when staff start/end sessions or record payments.</p>
       </div>
 
       {error && <div className="alert error">{error}</div>}
